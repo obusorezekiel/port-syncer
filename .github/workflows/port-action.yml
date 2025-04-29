@@ -1,0 +1,80 @@
+name: Sync control plane gitops
+permissions:
+  contents: write
+  pull-requests: write
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        required: true
+        description: "Delete, Update or Create"
+      triggeringUser:
+        required: true
+        description: "Email of the triggering user"
+      runId:
+        required: true
+        description: "Port Run ID"
+      manifest:
+        required: true
+        description: "Kubernetes manifest from Port"
+      folder:
+        required: true
+        default: "./kratix/platform/resources"
+
+jobs:
+  commit-to-main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Update manifests
+        run: |
+          echo '${{ inputs.manifest }}' | jq . > temp.json
+          yaml_data=$(yq -p json -o yaml temp.json)
+          name=$(echo '${{ inputs.manifest }}' | jq -r .metadata.name)
+          mkdir -p ${{ inputs.folder }}
+          if [ "${{ inputs.operation }}" = "DELETE" ]; then
+            rm -f "${{ inputs.folder }}/$name.yaml"
+          else
+            echo "$yaml_data" > "${{ inputs.folder }}/$name.yaml"
+          fi
+          rm temp.json
+      - uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ inputs.runId }}
+          icon: GithubActions
+          logMessage: "Updating resources 🚀"
+      - name: Commit changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "chore: ${{ inputs.operation }} resource by ${{ inputs.triggeringUser }}"
+            git push origin main
+          fi
+      - uses: port-labs/port-github-action@v1
+        if: success()
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ inputs.runId }}
+          icon: GithubActions
+          logMessage: "Successfully committed to main ✅"
+      - uses: port-labs/port-github-action@v1
+        if: failure()
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ inputs.runId }}
+          icon: GithubActions
+          logMessage: "Failed to commit to main ❌ - Check GitHub Actions logs 📜"
