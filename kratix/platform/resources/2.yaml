@@ -1,0 +1,8 @@
+apiVersion: promise.kratix.io/v1alpha1
+kind: MongoDB
+metadata:
+  namespace: default
+  name: "2"
+spec:
+  majorVersion: 4
+  version: "2"
