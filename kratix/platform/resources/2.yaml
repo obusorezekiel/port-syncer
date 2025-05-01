@@ -4,5 +4,5 @@ metadata:
   namespace: default
   name: "2"
 spec:
-  majorVersion: 4
-  version: "2"
+  majorVersion: 1
+  version: "3"
