@@ -1,0 +1,8 @@
+apiVersion: promise.kratix.io/v1alpha1
+kind: MongoDB
+metadata:
+  namespace: default
+  name: duffs
+spec:
+  majorVersion: 1
+  version: "1"
