@@ -5,3 +5,4 @@ metadata:
   name: duffs
 spec:
   majorVersion: 1
+  version: "1"
